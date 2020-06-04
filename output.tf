@@ -1,10 +1,7 @@
 #output
 
-output "front-door-object" {
-  value = azurerm_frontdoor.front-door
+output "app-gw-object" {
+  value = azurerm_application_gateway.appgw
 }
 
-output "front-door-waf-object" {
-  value = module.azure_front_door_waf.object
-}
 

@@ -1,26 +1,17 @@
-#Create 1 to x Azure Front Door Policies
-module "azure_app_gw_waf" {
-  source = "./app-gw-waf"
-
-  front-door-rg           = var.front-door-rg
-  front-door-waf-object   = var.front-door-waf-object
-  tags                    = var.tags
-
-}
-  
+ 
 #Create Azure Front Door Resource
 resource "azurerm_application_gateway" "appgw" {
-  depends_on                                   = [module.azurerm_web_application_firewall_policy]
+  #depends_on                                   = [module.azurerm_web_application_firewall_policy]
   name                                         = var.app-gw-object.name
   location                                     = var.location
-  resource_group_name                          = var.front-door-rg
+  resource_group_name                          = var.resource_group_name
   tags                                         = local.tags
-  zones                                        = var.app-gw-object.zones
-  enable_http2                                 = var.app-gw-object.enable_http2 
-  firewall_policy_id = var.app-gw-object.web_application_firewall_policy_link_name != "" ? module.azurerm_web_application_firewall_policy.waf-map[var.app-gw-object.web_application_firewall_policy_link_name] : ""          
+  zones                                        = lookup(var.app-gw-object, "zones", null)
+  enable_http2                                 = lookup(var.app-gw-object, "enable_http2", null) 
+  firewall_policy_id = lookup(var.app-gw-object, "firewall_policy_id", null) #var.app-gw-object.web_application_firewall_policy_link_name != "" ? module.azurerm_web_application_firewall_policy.waf-map[var.app-gw-object.web_application_firewall_policy_link_name] : ""          
 
 dynamic "sku" {
-      for_each = var.app-gw-object.sku
+      for_each = [var.app-gw-object.sku]
       content {
         name          = sku.value.name
         tier          = sku.value.tier
@@ -28,12 +19,12 @@ dynamic "sku" {
       }
     }
 
-dynamic " backend_address_pool" {
-      for_each = var.app-gw-object. backend_address_pool
+dynamic "backend_address_pool" {
+      for_each = var.app-gw-object.backend_address_pool
       content {
         name          =  backend_address_pool.value.name
-        fqdns         =  backend_address_pool.value.fqdns
-        ip_addresses  =  backend_address_pool.value.ip_addresses
+        fqdns         =  lookup(backend_address_pool.value, "fqdns", null)
+        ip_addresses  =  lookup(backend_address_pool.value, "ip_addresses", null)
       }
     }
   
@@ -41,19 +32,32 @@ dynamic " backend_address_pool" {
   dynamic "backend_http_settings" {
       for_each = var.app-gw-object.backend_http_settings
       content {
-        cookie_based_affinity                 = backend_http_settings.cookie_based_affinity
-        affinity_cookie_name                  = backend_http_settings.affinity_cookie_name
-        name                                  = backend_http_settings.name
-        path                                  = backend_http_settings.path
-        port                                  = backend_http_settings.port
-        probe_name                            = backend_http_settings.probe_name
-        protocol                              = backend_http_settings.protocol
-        request_timeout                       = backend_http_settings.request_timeout
-        host_name                             = backend_http_settings.host_name
-        pick_host_name_from_backend_address   = backend_http_settings.pick_host_name_from_backend_address
-        authentication_certificate            = backend_http_settings.authentication_certificate
-        trusted_root_certificate_names        = backend_http_settings.trusted_root_certificate_names
-        connection_draining                   = backend_http_settings.connection_draining
+        cookie_based_affinity                 = backend_http_settings.value.cookie_based_affinity
+        affinity_cookie_name                  = lookup(backend_http_settings.value, "affinity_cookie_name", null)
+        name                                  = backend_http_settings.value.name
+        path                                  = lookup(backend_http_settings.value, "path", null)
+        port                                  = backend_http_settings.value.port
+        probe_name                            = lookup(backend_http_settings.value, "probe_name", null)
+        protocol                              = backend_http_settings.value.protocol
+        request_timeout                       = backend_http_settings.value.request_timeout
+        host_name                             = lookup(backend_http_settings.value, "host_name", null)
+        pick_host_name_from_backend_address   = lookup(backend_http_settings.value, "pick_host_name_from_backend_address", null) 
+
+        dynamic "authentication_certificate" {            
+        for_each = backend_http_settings.value.authentication_certificate
+          content {
+            name                                = authentication_certificate.value.name
+          }
+        }
+        trusted_root_certificate_names        = lookup(backend_http_settings.value, "trusted_root_certificate_names", null)
+
+        dynamic "connection_draining" {
+          for_each = lookup(backend_http_settings.value, "connection_draining", []) != [] ? [backend_http_settings.value.connection_draining] : []
+          content {
+            enabled                             = connection_draining.value.enabled
+            drain_timeout_sec                   = connection_draining.value.drain_timeout_sec
+          }
+        }
       }
     }
 
@@ -62,9 +66,9 @@ dynamic "frontend_ip_configuration" {
       content {
         name                          = frontend_ip_configuration.value.name
         subnet_id                     = frontend_ip_configuration.value.subnet_id
-        private_ip_address            = frontend_ip_configuration.value.private_ip_address
-        public_ip_address_id          = frontend_ip_configuration.value.public_ip_address_id
-        private_ip_address_allocation = frontend_ip_configuration.value.private_ip_address_allocation
+        private_ip_address            = lookup(frontend_ip_configuration.value, "private_ip_address", null)
+        public_ip_address_id          = lookup(frontend_ip_configuration.value, "public_ip_address_id", null)
+        private_ip_address_allocation = lookup(frontend_ip_configuration.value, "private_ip_address_allocation", null)
       }
     }
 
@@ -87,13 +91,14 @@ dynamic "gateway_ip_configuration" {
 dynamic "http_listener" {
       for_each = var.app-gw-object.http_listener
       content {
-        name                      = http_listener.value.name
-        frontend_port_name        = http_listener.value.name
-        host_name                 = http_listener.value.name
-        host_names                = http_listener.value.name
-        protocol                  = http_listener.value.name
-        require_sni               = http_listener.value.name
-        ssl_certificate_name      = http_listener.value.name
+        name                            = http_listener.value.name
+        frontend_ip_configuration_name  = http_listener.value.frontend_ip_configuration_name
+        frontend_port_name              = http_listener.value.frontend_port_name
+        host_name                       = lookup(http_listener.value, "host_name", null)
+        host_names                      = lookup(http_listener.value, "host_names", null)
+        protocol                        = http_listener.value.protocol
+        require_sni                     = lookup(http_listener.value, "require_sni", null)
+        ssl_certificate_name            = lookup(http_listener.value, "ssl_certificate_name", null)
         
         dynamic "custom_error_configuration" {
           for_each = http_listener.value.custom_error_configuration
@@ -106,7 +111,7 @@ dynamic "http_listener" {
     }
 
 dynamic "identity" {
-      for_each = var.app-gw-object.identity
+      for_each = lookup(var.app-gw-object, "identity", []) != [] ? [var.app-gw-object.identity] : []
       content {
         type          = identity.value.type
         identity_ids  = identity.value.identity_ids
@@ -120,11 +125,11 @@ dynamic "request_routing_rule" {
         name                        = request_routing_rule.value.name
         rule_type                   = request_routing_rule.value.rule_type
         http_listener_name          = request_routing_rule.value.http_listener_name
-        backend_address_pool_name   = request_routing_rule.value.backend_address_pool_name
-        backend_http_settings_name  = request_routing_rule.value.backend_http_settings_name
-        redirect_configuration_name = request_routing_rule.value.redirect_configuration_name
-        rewrite_rule_set_name       = request_routing_rule.value.rewrite_rule_set_name
-        url_path_map_name           = request_routing_rule.value.url_path_map_name
+        backend_address_pool_name   = lookup(request_routing_rule.value, "backend_address_pool_name", null)
+        backend_http_settings_name  = lookup(request_routing_rule.value, "backend_http_settings_name", null)
+        redirect_configuration_name = lookup(request_routing_rule.value, "redirect_configuration_name", null)
+        rewrite_rule_set_name       = lookup(request_routing_rule.value, "rewrite_rule_set_name", null)
+        url_path_map_name           = lookup(request_routing_rule.value, "url_path_map_name", null)
       }
     }
 
@@ -145,7 +150,7 @@ dynamic "trusted_root_certificate" {
     }
 
 dynamic "ssl_policy" {
-      for_each = var.app-gw-object.ssl_policy
+      for_each = lookup(var.app-gw-object, "ssl_policy", []) != [] ? [var.app-gw-object.ssl_policy] : []
       content {
         disabled_protocols          = ssl_policy.value.disabled_protocols
         policy_type                 = ssl_policy.value.type        
@@ -156,7 +161,7 @@ dynamic "ssl_policy" {
     }
 
 dynamic "probe" {
-      for_each = var.app-gw-object.todo
+      for_each = var.app-gw-object.probe 
       content {
         host                                        = probe.value.host
         interval                                    = probe.value.interval
@@ -166,7 +171,15 @@ dynamic "probe" {
         timeout                                     = probe.value.timeout
         unhealthy_threshold                         = probe.value.unhealthy_threshold
         pick_host_name_from_backend_http_settings   = probe.value.pick_host_name_from_backend_http_settings
-        match                                       = probe.value.match
+        
+        dynamic "match" {                                       
+        for_each = probe.value.match
+          content {
+            body = match.body
+            status_code = match.status_code 
+          }
+        }
+        
         minimum_servers                             = probe.value.minimum_servers
       }
     }
@@ -195,7 +208,8 @@ dynamic "ssl_certificate" {
         dynamic "path_rule" {
           for_each = url_path_map.value.path_rule
           content {
-            id                        = path_rule.value.id
+            name                       = path_rule.value.name
+            paths                     = path_rule.value.paths
             backend_address_pool_id   = path_rule.value.backend_address_pool_id
             backend_http_settings_id  = path_rule.value.backend_http_settings_id
             redirect_configuration_id = path_rule.value.redirect_configuration_id
@@ -209,10 +223,10 @@ dynamic "ssl_certificate" {
   dynamic "waf_configuration" {
       for_each = var.app-gw-object.waf_configuration
       content {
-        enabled = waf_configuration.value.
-        firewall_mode = waf_configuration.value.
-        rule_set_type = waf_configuration.value.
-        rule_set_version = waf_configuration.value.
+        enabled = waf_configuration.value.enabled
+        firewall_mode = waf_configuration.value.firewall_mode
+        rule_set_type = waf_configuration.value.rule_set_type
+        rule_set_version = waf_configuration.value.rule_set_version
         
         dynamic "disabled_rule_group" {
           for_each = waf_configuration.value.disabled_rule_group
@@ -222,9 +236,9 @@ dynamic "ssl_certificate" {
           }
         }
        
-        file_upload_limit_mb = waf_configuration.value.
-        request_body_check = waf_configuration.value.
-        max_request_body_size_kb = waf_configuration.value.
+        file_upload_limit_mb = waf_configuration.value.file_upload_limit_mb
+        request_body_check = waf_configuration.value.request_body_check
+        max_request_body_size_kb = waf_configuration.value.max_request_body_size_kb
         
         dynamic "exclusion" {
           for_each = waf_configuration.value.exclusion
@@ -289,7 +303,7 @@ dynamic "ssl_certificate" {
                 negate      = condition.value.negate
               }
             }
-            dynamic " request_header_configuration" {
+            dynamic "request_header_configuration" {
               for_each = rewrite_rule.value.request_header_configuration
               content {
                 header_name   = request_header_configuration.value.header_name
