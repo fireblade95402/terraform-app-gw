@@ -1,9 +1,9 @@
-app-gw-rg = "temp"
+app-gw-rg = "test-app-gw"
 location = "uksouth"
 tags = {test = "test"}
 app-gw-waf-object = {
   waf1 = {
-    name         = "appgw-test-policy"
+    name         = "test-app-gw-policy"
     custom_rules = {
       cr1 = {
         name      = "Rule1"

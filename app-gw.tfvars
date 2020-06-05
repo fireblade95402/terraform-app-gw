@@ -1,4 +1,4 @@
-  resource_group_name ="test"
+  resource_group_name ="test-app-gw"
   location            = "UkSouth"
   tags = {test= "test"}  
   
@@ -6,11 +6,11 @@
     name                = "example-appgateway"                                                  #(Required) The name of the Application Gateway. Changing this forces a new resource to be created.    
     #zones               = ""                                                                   #(Optional) A collection of availability zones to spread the Application Gateway over.
     #enable_http2        = ""                                                                   #(Optional) Is HTTP2 enabled on the application gateway resource? Defaults to false.                
-    #firewall_policy_id  = ""                                                                   #(Optional) The resource ID of a firewall policy.
+    firewall_policy_id  = "/subscriptions/<subscription>/resourceGroups/test-app-gw/providers/Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/test-app-gw-policy"                                                                   #(Optional) The resource ID of a firewall policy.
 
     sku = {                                                                                     #(Required)
-        name     = "Standard_Small"                                                             #(Required) The Name of the SKU to use for this Application Gateway. Possible values are Standard_Small, Standard_Medium, Standard_Large, Standard_v2, WAF_Medium, WAF_Large, and WAF_v2
-        tier     = "Standard"                                                                   #(Required) The Tier of the SKU to use for this Application Gateway. Possible values are Standard, Standard_v2, WAF and WAF_v2
+        name     = "WAF_v2"                                                             #(Required) The Name of the SKU to use for this Application Gateway. Possible values are Standard_Small, Standard_Medium, Standard_Large, Standard_v2, WAF_Medium, WAF_Large, and WAF_v2
+        tier     = "WAF_v2"                                                                   #(Required) The Tier of the SKU to use for this Application Gateway. Possible values are Standard, Standard_v2, WAF and WAF_v2
         capacity = 2                                                                            #(Required) The Capacity of the SKU to use for this Application Gateway. When using a V1 SKU this value must be between 1 and 32, and 1 to 125 for a V2 SKU. This property is optional if autoscale_configuration is set.
     }
 
@@ -51,10 +51,10 @@
     frontend_ip_configuration = {                                                               #(Required) One or more frontend_ip_configuration blocks as defined below.
             fic1 = {
             name                 = "ipconfigurationname"                                        #(Required) The name of the Frontend IP Configuration.
-            subnet_id            = ""                                                           #(Required) The ID of the Subnet which the Application Gateway should be connected to.
-            #private_ip_address = ""                                                             #(Optional) The Private IP Address to use for the Application Gateway.
-            #public_ip_address_id = ""                                                           #(Optional) The ID of a Public IP Address which the Application Gateway should use.
-            #private_ip_address_allocation = ""                                                  #(Optional) The Allocation Method for the Private IP Address. Possible values are Dynamic and Static.
+            #subnet_id            = ""                                                          #(Optional) The ID of the Subnet which the Application Gateway should be connected to.
+            #private_ip_address = ""                                                            #(Optional) The Private IP Address to use for the Application Gateway.
+            public_ip_address_id = "/subscriptions/<subscription>/resourceGroups/test-app-gw/providers/Microsoft.Network/publicIPAddresses/test-app-gw-pip"                                                           #(Optional) The ID of a Public IP Address which the Application Gateway should use.
+            #private_ip_address_allocation = ""                                                 #(Optional) The Allocation Method for the Private IP Address. Possible values are Dynamic and Static.
             }
     }
 
@@ -68,7 +68,7 @@
     gateway_ip_configuration = {                                                                #(Required) One or more gateway_ip_configuration blocks as defined below.
         gic1 = {
             name      = "my-gateway-ip-configuration"                                           #(Required) The Name of this Gateway IP Configuration. 
-            subnet_id = "/subscriptions/00000000-0000-0000-0000-000000000000/"                  #(Required) The ID of a Subnet.                                         #(Required) The ID of a Subnet.
+            subnet_id = "/subscriptions/<subscription>/resourceGroups/test-app-gw/providers/Microsoft.Network/virtualNetworks/test-app-gw-vnet/subnets/myAppGWSubnet"                  #(Required) The ID of a Subnet.                                         #(Required) The ID of a Subnet.
         }
     }
 

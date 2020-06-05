@@ -65,7 +65,7 @@ dynamic "frontend_ip_configuration" {
       for_each = var.app-gw-object.frontend_ip_configuration
       content {
         name                          = frontend_ip_configuration.value.name
-        subnet_id                     = frontend_ip_configuration.value.subnet_id
+        subnet_id                     = lookup(frontend_ip_configuration.value, "subnet_id", null)
         private_ip_address            = lookup(frontend_ip_configuration.value, "private_ip_address", null)
         public_ip_address_id          = lookup(frontend_ip_configuration.value, "public_ip_address_id", null)
         private_ip_address_allocation = lookup(frontend_ip_configuration.value, "private_ip_address_allocation", null)
